@@ -1298,7 +1298,29 @@ int main() {
 	checkError(status, "Setting conv1x1 14 arguments");
 
 	status = clEnqueueNDRangeKernel(queue, conv1x1, 2, NULL, conv14_work_size, NULL, 1, &pool13_event, &conv14_event);
-	checkError(status, "Enqueueing conv1x1 14");
+	checkError(status, "Enqueueing conv1x1 14"); 
+
+/*	unsigned int N_elem_14 = input_channels_14*kernel_size_14*kernel_size_14;
+
+	size_t conv14_work_size[] = {8,1000};
+	size_t conv14_local_work_size[] = {8,8};
+
+	status |= clSetKernelArg(conv3x3, 0, sizeof(cl_mem), &d_pool13_out);
+	status |= clSetKernelArg(conv3x3, 1, sizeof(cl_mem), &d_conv14_weight);
+	status |= clSetKernelArg(conv3x3, 2, sizeof(cl_mem), &d_conv14_out);
+	status |= clSetKernelArg(conv3x3, 3, sizeof(int), &N_elem_14);
+	status |= clSetKernelArg(conv3x3, 4, sizeof(int), &kernel_size_14);
+	status |= clSetKernelArg(conv3x3, 5, sizeof(int), &stride_14);
+	status |= clSetKernelArg(conv3x3, 6, sizeof(int), &pad_14);
+	status |= clSetKernelArg(conv3x3, 7, sizeof(int), &input_channels_14);
+	status |= clSetKernelArg(conv3x3, 8, sizeof(int), &input_size_14);
+	status |= clSetKernelArg(conv3x3, 9, sizeof(int), &input_size_sq_14);
+	status |= clSetKernelArg(conv3x3, 10, sizeof(int), &output_size_14);
+	checkError(status, "Setting conv3x3 14 arguments");
+
+	status = clEnqueueNDRangeKernel(queue, conv3x3, 2, NULL, conv14_work_size, conv14_local_work_size, 1, &pool13_event, &conv14_event);
+	checkError(status, "Enqueueing conv3x3 14");*/
+
 
   // BATCHNORM 14
 
