@@ -36,7 +36,7 @@ We designed a Neural Network Accelerator for [Darknet Reference Model](https://p
 </center>
 
 ## Files 
-- [pytorch_model](pytorch_model/pytorch_model.ipynb)- The Neural network we used is based on Darknet Framework. So, we had to implemented the model in PyTorch Framework to check the results.
-- [pyopencl_model](pyopencl_model/pyopencl.ipynb) - 
+- [pytorch_model ](pytorch_model/pytorch_model.ipynb)- The Neural network we used is based on Darknet Framework. So, we had to implemented the model in PyTorch Framework to check the results.
+- [pyopencl_model ](pyopencl_model/pyopencl.ipynb) - 
 To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package and it worked with same accuracy as PyTorch model and acheived about 20x speed than PyTorch model.
 - [accelerator/ ](accelerator/) - Then we used the same kernels to build the accelerator on FPGA and the accelerator achieved an inference time about 800 ms per image.
