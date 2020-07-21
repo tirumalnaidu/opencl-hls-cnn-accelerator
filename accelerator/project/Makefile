@@ -19,9 +19,9 @@ AOCL_LINK_CONFIG := $(shell aocl link-config --arm)
 
 # Compilation flags
 ifeq ($(DEBUG),1)
-CXXFLAGS += -g
+CXXFLAGS += -g 
 else
-CXXFLAGS += -O2
+CXXFLAGS += -O2 
 endif
 
 # Compiler. ARM cross-compiler.
@@ -32,13 +32,16 @@ TARGET := host
 TARGET_DIR := bin
 
 # Directories
-INC_DIRS := host/inc common/inc ../common/inc /model C:\opencv\build\include
+INC_DIRS := host/inc common/inc ../common/inc 
+#/usr/local/opencv-arm/include/opencv4
 LIB_DIRS := 
+#/usr/local/opencv-arm/lib
 
 # Files
 INCS := $(wildcard host/inc/*.h)
 SRCS := $(wildcard host/src/*.cpp ../common/src/AOCLUtils/*.cpp)
-LIBS := rt pthread
+LIBS :=  rt pthread 
+# opencv_highgui opencv_core opencv_imgproc opencv_imgcodecs
 
 # Make it all!
 all : $(TARGET_DIR)/$(TARGET)
@@ -49,7 +52,7 @@ $(TARGET_DIR)/$(TARGET) : Makefile $(SRCS) $(INCS) $(TARGET_DIR)
 			$(AOCL_COMPILE_CONFIG) $(SRCS) $(AOCL_LINK_CONFIG) \
 			$(foreach D,$(LIB_DIRS),-L$D) \
 			$(foreach L,$(LIBS),-l$L) \
-			-o $(TARGET_DIR)/$(TARGET)
+			-o $(TARGET_DIR)/$(TARGET) 
 
 $(TARGET_DIR) :
 	$(ECHO)mkdir $(TARGET_DIR)

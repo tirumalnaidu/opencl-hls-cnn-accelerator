@@ -4,8 +4,13 @@
 #include <iostream>
 #include "CL/opencl.h"
 #include "AOCLUtils/aocl_utils.h"
-#include "img.h"
 #include "darknet.h"
+#include "img.h"
+
+// #include <opencv2/highgui/highgui.hpp>
+// #include <opencv2/imgproc/imgproc.hpp>
+// #include <opencv2/core/core.hpp>
+// using namespace cv;
 
 using namespace aocl_utils;
 
@@ -17,6 +22,8 @@ cl_command_queue queue;
 cl_program program = NULL;
 
 cl_kernel conv3x3, conv1x1, bn, pool;
+
+cl_int status;
 
 cl_mem d_sample, d_conv0_weight, d_conv0_out;
 cl_mem d_bn0_weight, d_bn0_bias, d_bn0_mean, d_bn0_var, d_bn0_out;
@@ -50,15 +57,6 @@ cl_event conv8_event, bn8_event, pool9_event;
 cl_event conv10_event, bn10_event, pool11_event;
 cl_event conv12_event, bn12_event, pool13_event;
 cl_event conv14_event, bn14_event;
-
-/*scoped_array<scoped_aligned_ptr<float> > bn0_weight, bn0_mean, bn0_var, bn0_bias;
-scoped_array<scoped_aligned_ptr<float> > conv2_weight, bn2_weight, bn2_mean, bn2_var, bn2_bias;
-scoped_array<scoped_aligned_ptr<float> > conv4_weight, bn4_weight, bn4_mean, bn4_var, bn4_bias;
-scoped_array<scoped_aligned_ptr<float> > conv6_weight, bn6_weight, bn6_mean, bn6_var, bn6_bias;
-scoped_array<scoped_aligned_ptr<float> > conv8_weight, bn8_weight, bn8_mean, bn8_var, bn8_bias;
-scoped_array<scoped_aligned_ptr<float> > conv10_weight, bn10_weight, bn10_mean, bn10_var, bn10_bias;
-scoped_array<scoped_aligned_ptr<float> > conv12_weight, bn12_weight, bn12_mean, bn12_var, bn12_bias;
-scoped_array<scoped_aligned_ptr<float> > conv14_weight, bn14_weight, bn14_mean, bn14_var, bn14_bias;*/
 
 float* conv0_weight = (float* )malloc(32*output_channels_0*sizeof(float));
 float* bn0_weight = (float* )malloc(output_channels_0*sizeof(float));
@@ -107,6 +105,8 @@ float* bn14_weight = (float* )malloc(output_channels_14*sizeof(float));
 float* bn14_mean = (float* )malloc(output_channels_14*sizeof(float));
 float* bn14_var = (float* )malloc(output_channels_14*sizeof(float));
 float* bn14_bias = (float* )malloc(output_channels_14*sizeof(float));
+
+char image_path[] = "cat.jpg";
 
 char conv0_wt_file[] = "conv0_weight.txt";
 char bn0_wt_file[]   = "bn0_weight.txt";
@@ -158,22 +158,21 @@ char bn14_bias_file[] = "bn14_bias.txt";
 
 const float eps = 0.00001;
 
-float *conv0_result = (float *)malloc(output_size_0*output_size_0*output_channels_0* sizeof(float));
-float *bn0_result = (float *)malloc(output_size_0*output_size_0*output_channels_0* sizeof(float));
+float* image = (float *)malloc(input_size_0*input_size_0*input_channels_0*sizeof(float));
+//float* image_data = (float *)malloc(input_size_0*input_size_0*input_channels_0* sizeof(float));
+float* bn14_result = (float *)malloc(output_channels_14* sizeof(float));
+float* softmax_out = (float *)malloc(output_channels_14* sizeof(float));
 
-float *pool1_result = (float *)malloc(output_size_1*output_size_1*output_channels_0* sizeof(float));
-float *conv2_result = (float *)malloc(output_size_2*output_size_2*output_channels_2* sizeof(float));
-float *pool3_result = (float *)malloc(output_size_3*output_size_3*output_channels_0* sizeof(float));
-float *conv12_result = (float *)malloc(output_size_12*output_size_12*output_channels_12* sizeof(float));
-float *bn14_result = (float *)malloc(1000* sizeof(float));
+char label[200];
+float accuracy;
 
-//float result[1000];
-
+// void load_image();
+void softmax();
+void get_results();
 void cleanup();
 
 int main() {
 
-	cl_int status;
 
 	printf("Initializing OpenCL\n");
 
@@ -445,21 +444,7 @@ int main() {
 			  output_size_14*output_size_14*output_channels_14*sizeof(float), NULL, &status);
 				checkError(status, "Failed to create d_bn14_out buffer");
 
-// Reading model paramters fom .txt files
-/*unsigned int k=0;
-  for(unsigned i=0;i<output_channels_0;i++){
-	  for(unsigned j=0;j<32;j++){
-		  if(j<kernel_size_0*kernel_size_0*input_channels_0&& i<output_channels_0)
-		  {
-			  fscanf(fp,"%f",&conv0_weight);
-			  conv0_weight[0][k++]=(char)conv0_weight;
-		  }
-		  else // Padding to make it multiple of CONV_BLOCK_SIZE
-			  conv0_weight[0][k++]=0;
-	  }
-  }*/
-
-
+	printf("Reading conv0 weights...");
 	FILE* fp = fopen(conv0_wt_file, "r");
 	unsigned int k=0;
 	float wt;
@@ -475,8 +460,9 @@ int main() {
 		}
   	}	
 	fclose(fp);
-	printf("%f\n",conv0_weight[0]);
 
+
+	printf("\nReading bn0 weights...");
 	fp = fopen(bn0_wt_file, "r");
 	for(int i=0; i<output_channels_0; i++)
 	{
@@ -505,6 +491,7 @@ int main() {
 	}
 	fclose(fp);
 
+	printf("\nReading conv2 weights...");
 	fp = fopen(conv2_wt_file, "r");
 	for(int i=0; i<(input_channels_2*3*3*output_channels_2); i++)
 	{
@@ -512,6 +499,7 @@ int main() {
 	}
 	fclose(fp);
 
+	printf("\nReading bn2 weights...");
 	fp = fopen(bn2_wt_file, "r");
 	for(int i=0; i<output_channels_2; i++)
 	{
@@ -544,7 +532,7 @@ int main() {
 	fclose(fp);
 
 
-		// Reading conv 4 weights
+	printf("\nReading conv4 weights...");
 	fp = fopen(conv4_wt_file, "r");
 	for(int i=0; i<(input_channels_4*3*3*output_channels_4); i++)
 	{
@@ -552,7 +540,7 @@ int main() {
 	}
 	fclose(fp);
 
-	// Reading batchnorm 4 weights
+	printf("\nReading bn4 weights...");
 	fp = fopen(bn4_wt_file, "r");
 	for(int i=0; i<output_channels_4; i++)
 	{
@@ -585,7 +573,7 @@ int main() {
 	fclose(fp);
 
 
-		// Reading conv 6 weights
+	printf("\nReading conv6 weights...");
 	fp = fopen(conv6_wt_file, "r");
 	for(int i=0; i<(input_channels_6*3*3*output_channels_6); i++)
 	{
@@ -593,7 +581,7 @@ int main() {
 	}
 	fclose(fp);
 
-	// Reading batchnorm 6 weights
+	printf("\nReading bn6 weights...");
 	fp = fopen(bn6_wt_file, "r");
 	for(int i=0; i<output_channels_6; i++)
 	{
@@ -626,7 +614,7 @@ int main() {
 	fclose(fp);
 
 
-		// Reading conv 8 weights
+	printf("\nReading conv8 weights...");
 	fp = fopen(conv8_wt_file, "r");
 	for(int i=0; i<(input_channels_8*3*3*output_channels_8); i++)
 	{
@@ -634,7 +622,7 @@ int main() {
 	}
 	fclose(fp);
 
-	// Reading batchnorm 8 weights
+	printf("\nReading bn8 weights...");
 	fp = fopen(bn8_wt_file, "r");
 	for(int i=0; i<output_channels_8; i++)
 	{
@@ -667,7 +655,7 @@ int main() {
 	fclose(fp);
 
 
-		// Reading conv 10 weights
+	printf("\nReading conv10 weights...");
 	fp = fopen(conv10_wt_file, "r");
 	for(int i=0; i<(input_channels_10*3*3*output_channels_10); i++)
 	{
@@ -675,7 +663,7 @@ int main() {
 	}
 	fclose(fp);
 
-	// Reading batchnorm 10 weights
+	printf("\nReading bn10 weights...");
 	fp = fopen(bn10_wt_file, "r");
 	for(int i=0; i<output_channels_10; i++)
 	{
@@ -708,7 +696,7 @@ int main() {
 	fclose(fp);
 
 
-		// Reading conv 12 weights
+	printf("\nReading conv12 weights...");
 	fp = fopen(conv12_wt_file, "r");
 	for(int i=0; i<(input_channels_12*3*3*output_channels_12); i++)
 	{
@@ -716,7 +704,7 @@ int main() {
 	}
 	fclose(fp);
 
-	// Reading batchnorm 12 weights
+	printf("\nReading bn12 weights...");
 	fp = fopen(bn12_wt_file, "r");
 	for(int i=0; i<output_channels_12; i++)
 	{
@@ -749,7 +737,7 @@ int main() {
 	fclose(fp);
 
 
-		// Reading conv 14 weights
+	printf("\nReading conv14 weights...");
 	fp = fopen(conv14_wt_file, "r");
 	for(int i=0; i<(input_channels_14*3*3*output_channels_14); i++)
 	{
@@ -757,7 +745,7 @@ int main() {
 	}
 	fclose(fp);
 
-	// Reading batchnorm 14 weights
+	printf("\nReading bn14 weights...");
 	fp = fopen(bn14_wt_file, "r");
 	for(int i=0; i<output_channels_14; i++)
 	{
@@ -792,10 +780,13 @@ int main() {
 // Transfer data to the buffers
 
 	status = clEnqueueWriteBuffer(queue, d_sample, CL_TRUE, 0,
-	 			input_size_0*input_size_0*input_channels_0*sizeof(float), sample, 0, NULL, NULL);
+	 			input_size_0*input_size_0*input_channels_0*sizeof(float), sample, 0, NULL, NULL);	
+    checkError(status, "Failed to transfer input data");
 
 	status = clEnqueueWriteBuffer(queue, d_conv0_weight, CL_TRUE, 0,
 				32*output_channels_0*sizeof(float), conv0_weight, 0, NULL, NULL);
+    checkError(status, "Failed to transfer conv0 weights");
+
 	status = clEnqueueWriteBuffer(queue, d_bn0_weight, CL_TRUE, 0,
 				output_channels_0*sizeof(float), bn0_weight, 0, NULL, NULL);
 	status = clEnqueueWriteBuffer(queue, d_bn0_bias, CL_TRUE, 0,
@@ -807,6 +798,7 @@ int main() {
 
 	status = clEnqueueWriteBuffer(queue, d_conv2_weight, CL_TRUE, 0,
 				input_channels_2*3*3*output_channels_2*sizeof(float), conv2_weight, 0, NULL, NULL);
+    checkError(status, "Failed to transfer conv2 weights");
 	status = clEnqueueWriteBuffer(queue, d_bn2_weight, CL_TRUE, 0,
 				output_channels_2*sizeof(float), bn2_weight, 0, NULL, NULL);
 	status = clEnqueueWriteBuffer(queue, d_bn2_bias, CL_TRUE, 0,
@@ -816,19 +808,21 @@ int main() {
 	status = clEnqueueWriteBuffer(queue, d_bn2_var, CL_TRUE, 0,
 				output_channels_2*sizeof(float), bn2_var, 0, NULL, NULL);
 
-  status = clEnqueueWriteBuffer(queue, d_conv4_weight, CL_TRUE, 0,
+  	status = clEnqueueWriteBuffer(queue, d_conv4_weight, CL_TRUE, 0,
 			  input_channels_4*3*3*output_channels_4*sizeof(float), conv4_weight, 0, NULL, NULL);
-  status = clEnqueueWriteBuffer(queue, d_bn4_weight, CL_TRUE, 0,
+    checkError(status, "Failed to transfer conv4 weights");
+  	status = clEnqueueWriteBuffer(queue, d_bn4_weight, CL_TRUE, 0,
 			  output_channels_4*sizeof(float), bn4_weight, 0, NULL, NULL);
-  status = clEnqueueWriteBuffer(queue, d_bn4_bias, CL_TRUE, 0,
+ 	 status = clEnqueueWriteBuffer(queue, d_bn4_bias, CL_TRUE, 0,
 			  output_channels_4*sizeof(float), bn4_bias, 0, NULL, NULL);
-  status = clEnqueueWriteBuffer(queue, d_bn4_mean, CL_TRUE, 0,
+  	status = clEnqueueWriteBuffer(queue, d_bn4_mean, CL_TRUE, 0,
 			  output_channels_4*sizeof(float), bn4_mean, 0, NULL, NULL);
-  status = clEnqueueWriteBuffer(queue, d_bn4_var, CL_TRUE, 0,
+  	status = clEnqueueWriteBuffer(queue, d_bn4_var, CL_TRUE, 0,
 			  output_channels_4*sizeof(float), bn4_var, 0, NULL, NULL);
 
-  status = clEnqueueWriteBuffer(queue, d_conv6_weight, CL_TRUE, 0,
+  	status = clEnqueueWriteBuffer(queue, d_conv6_weight, CL_TRUE, 0,
 				input_channels_6*3*3*output_channels_6*sizeof(float), conv6_weight, 0, NULL, NULL);
+    checkError(status, "Failed to transfer conv6 weights");
 	status = clEnqueueWriteBuffer(queue, d_bn6_weight, CL_TRUE, 0,
 				output_channels_6*sizeof(float), bn6_weight, 0, NULL, NULL);
 	status = clEnqueueWriteBuffer(queue, d_bn6_bias, CL_TRUE, 0,
@@ -840,6 +834,7 @@ int main() {
 
 	status = clEnqueueWriteBuffer(queue, d_conv8_weight, CL_TRUE, 0,
 				input_channels_8*3*3*output_channels_8*sizeof(float), conv8_weight, 0, NULL, NULL);
+    checkError(status, "Failed to transfer conv8 weights");
 	status = clEnqueueWriteBuffer(queue, d_bn8_weight, CL_TRUE, 0,
 				output_channels_8*sizeof(float), bn8_weight, 0, NULL, NULL);
 	status = clEnqueueWriteBuffer(queue, d_bn8_bias, CL_TRUE, 0,
@@ -851,6 +846,7 @@ int main() {
 
 	status = clEnqueueWriteBuffer(queue, d_conv10_weight, CL_TRUE, 0,
 				input_channels_10*3*3*output_channels_10*sizeof(float), conv10_weight, 0, NULL, NULL);
+    checkError(status, "Failed to transfer conv10 weights");
 	status = clEnqueueWriteBuffer(queue, d_bn10_weight, CL_TRUE, 0,
 				output_channels_10*sizeof(float), bn10_weight, 0, NULL, NULL);
 	status = clEnqueueWriteBuffer(queue, d_bn10_bias, CL_TRUE, 0,
@@ -862,6 +858,7 @@ int main() {
 
 	status = clEnqueueWriteBuffer(queue, d_conv12_weight, CL_TRUE, 0,
 				input_channels_12*3*3*output_channels_12*sizeof(float), conv12_weight, 0, NULL, NULL);
+    checkError(status, "Failed to transfer conv12 weights");
 	status = clEnqueueWriteBuffer(queue, d_bn12_weight, CL_TRUE, 0,
 				output_channels_12*sizeof(float), bn12_weight, 0, NULL, NULL);
 	status = clEnqueueWriteBuffer(queue, d_bn12_bias, CL_TRUE, 0,
@@ -873,6 +870,7 @@ int main() {
 
 	status = clEnqueueWriteBuffer(queue, d_conv14_weight, CL_TRUE, 0,
 				input_channels_14*3*3*output_channels_14*sizeof(float), conv14_weight, 0, NULL, NULL);
+    checkError(status, "Failed to transfer conv14 weights");
 	status = clEnqueueWriteBuffer(queue, d_bn14_weight, CL_TRUE, 0,
 				output_channels_14*sizeof(float), bn14_weight, 0, NULL, NULL);
 	status = clEnqueueWriteBuffer(queue, d_bn14_bias, CL_TRUE, 0,
@@ -882,17 +880,18 @@ int main() {
 	status = clEnqueueWriteBuffer(queue, d_bn14_var, CL_TRUE, 0,
 				output_channels_14*sizeof(float), bn14_var, 0, NULL, NULL);
 
+
+
 // Kernel Execution
-	printf("Accelerator starts!!\n\n");
+	printf("\n\nAccelerator starts...\n\n");
 
-	// conv3x3 0
+	//load_image();
 
+	// CONV 0
 	unsigned int N_elem_0 = 32;
-
 	size_t conv0_work_size[] = {256*256,16};
 	size_t conv0_local_work_size[] = {8,8};
 
-  // conv_cl(queue,(256*256,16), (16,16), d_sample, d_conv0_weights, d_conv0_out, 3*3*3, 3, 1, 1, 3, 256, 256*256, 256)
 	status |= clSetKernelArg(conv3x3, 0, sizeof(cl_mem), &d_sample);
 	status |= clSetKernelArg(conv3x3, 1, sizeof(cl_mem), &d_conv0_weight);
 	status |= clSetKernelArg(conv3x3, 2, sizeof(cl_mem), &d_conv0_out);
@@ -927,7 +926,6 @@ int main() {
 	checkError(status, "Enqueueing batchnorm 0");
 
 	// POOL 1
-
 	size_t pool1_work_size = 16;
 
 	status |= clSetKernelArg(pool, 0, sizeof(cl_mem), &d_bn0_out);
@@ -942,10 +940,8 @@ int main() {
 	status = clEnqueueNDRangeKernel(queue, pool, 1, NULL, &pool1_work_size, NULL, 1, &bn0_event, &pool1_event);
 	checkError(status, "Enqueueing pool 1");
 
-	// conv3x3 2
-
+	// CONV 2
 	unsigned int N_elem_2 = input_channels_2*kernel_size_2*kernel_size_2;
-
 	size_t conv2_work_size[] = {128*128,32};
 	size_t conv2_local_work_size[] = {8,8};
 
@@ -967,7 +963,6 @@ int main() {
 	checkError(status, "Enqueueing conv3x3 2");
 
 	// BATCHNORM 2
-
 	size_t bn2_work_size[] = {32,128*128};
 
 	status |= clSetKernelArg(bn, 0, sizeof(cl_mem), &d_conv2_out);
@@ -985,7 +980,6 @@ int main() {
 	checkError(status, "Enqueueing batchnorm 2");
 
 	// POOL 3
-
 	size_t pool3_work_size = 32;
 
 	status |= clSetKernelArg(pool, 0, sizeof(cl_mem), &d_bn2_out);
@@ -1001,8 +995,7 @@ int main() {
 	checkError(status, "Enqueueing maxpool 3");
 
 
-	// conv3x3 4
-
+	// CONV 4
 	unsigned int N_elem_4 = input_channels_4*kernel_size_4*kernel_size_4;
 
 	size_t conv4_work_size[] = {64*64,64};
@@ -1025,7 +1018,6 @@ int main() {
 	checkError(status, "Enqueueing conv3x3 4");
 
 	// BATCHNORM 4
-
 	size_t bn4_work_size[] = {64, 64*64};
 
 	status |= clSetKernelArg(bn, 0, sizeof(cl_mem), &d_conv4_out);
@@ -1043,7 +1035,6 @@ int main() {
 	checkError(status, "Enqueueing batchnorm 4");
 
 	// POOL 5
-
 	size_t pool5_work_size = 64;
 
 	status |= clSetKernelArg(pool, 0, sizeof(cl_mem), &d_bn4_out);
@@ -1057,8 +1048,7 @@ int main() {
 	status = clEnqueueNDRangeKernel(queue, pool, 1, NULL, &pool5_work_size, NULL, 1, &bn4_event, &pool5_event);
 	checkError(status, "Enqueueing maxpool 5");
 
-	// conv3x3 6
-
+	// CONV 6
 	unsigned int N_elem_6 = input_channels_6*kernel_size_6*kernel_size_6;
 
 	size_t conv6_work_size[] = {32*32,128};
@@ -1081,7 +1071,6 @@ int main() {
 	checkError(status, "Enqueueing conv3x3 6");
 
 	// BATCHNORM 6
-
 	size_t bn6_work_size[] = {128,32*32};
 
 	status |= clSetKernelArg(bn, 0, sizeof(cl_mem), &d_conv6_out);
@@ -1099,7 +1088,6 @@ int main() {
 	checkError(status, "Enqueueing batchnorm 6");
 
 	// POOL 7
-
 	size_t pool7_work_size = 128;
 
 	status |= clSetKernelArg(pool, 0, sizeof(cl_mem), &d_bn6_out);
@@ -1113,8 +1101,7 @@ int main() {
 	status = clEnqueueNDRangeKernel(queue, pool, 1, NULL, &pool7_work_size, NULL, 1, &bn6_event, &pool7_event);
 	checkError(status, "Enqueueing maxpool 7");
 
-	// conv3x3 8
-
+	// CONV 8
 	unsigned int N_elem_8 = input_channels_8*kernel_size_8*kernel_size_8;
 
 	size_t conv8_work_size[] = {16*16,256};
@@ -1137,7 +1124,6 @@ int main() {
 	checkError(status, "Enqueueing conv3x3 8");
 
 	// BATCHNORM 8
-
 	size_t bn8_work_size[] = {256,16*16};
 
 	status |= clSetKernelArg(bn, 0, sizeof(cl_mem), &d_conv8_out);
@@ -1155,7 +1141,6 @@ int main() {
 	checkError(status, "Enqueueing batchnorm 8");
 
 	// POOL 9
-
 	size_t pool9_work_size = 256;
 
 	status |= clSetKernelArg(pool, 0, sizeof(cl_mem), &d_bn8_out);
@@ -1169,8 +1154,7 @@ int main() {
 	status = clEnqueueNDRangeKernel(queue, pool, 1, NULL, &pool9_work_size, NULL, 1, &bn8_event, &pool9_event);
 	checkError(status, "Enqueueing maxpool 9");
 
-	// conv3x3 10
-
+	// CONV 10
 	unsigned int N_elem_10 = input_channels_10*kernel_size_10*kernel_size_10;
 
 	size_t conv10_work_size[] = {8*8,512};
@@ -1193,7 +1177,6 @@ int main() {
 	checkError(status, "Enqueueing conv3x3 10");
 
 	// BATCHNORM 10
-
 	size_t bn10_work_size[] = {512,8*8};
 
 	status |= clSetKernelArg(bn, 0, sizeof(cl_mem), &d_conv10_out);
@@ -1211,7 +1194,6 @@ int main() {
 	checkError(status, "Enqueueing batchnorm 10");
 
 	// POOL 11
-
 	size_t pool11_work_size = 512;
 
 	status |= clSetKernelArg(pool, 0, sizeof(cl_mem), &d_bn10_out);
@@ -1226,7 +1208,6 @@ int main() {
 	checkError(status, "Enqueueing maxpool 11");
 
 	// conv3x3 12
-
 	unsigned int N_elem_12 = input_channels_12*kernel_size_12*kernel_size_12;
 
 	size_t conv12_work_size[] = {4*4,1024};
@@ -1249,7 +1230,6 @@ int main() {
 	checkError(status, "Enqueueing conv3x3 12");
 
 	// BATCHNORM 12
-
 	size_t bn12_work_size[] = {1024,4*4};
 
 	status |= clSetKernelArg(bn, 0, sizeof(cl_mem), &d_conv12_out);
@@ -1267,8 +1247,6 @@ int main() {
 	checkError(status, "Enqueueing batchnorm 12");
 
 	// POOL 13
-
-
 	size_t pool13_work_size = 1024;
 
 	status |= clSetKernelArg(pool, 0, sizeof(cl_mem), &d_bn12_out);
@@ -1282,9 +1260,7 @@ int main() {
 	status = clEnqueueNDRangeKernel(queue, pool, 1, NULL, &pool13_work_size, NULL, 1, &bn12_event, &pool13_event);
 	checkError(status, "Enqueueing maxpool 13");
 
-	// conv1x1 14
-
-
+	// CONV 14
 	size_t conv14_work_size[] = {1000,1};
 
 	status |= clSetKernelArg(conv1x1, 0, sizeof(cl_mem), &d_pool13_out);
@@ -1300,30 +1276,7 @@ int main() {
 	status = clEnqueueNDRangeKernel(queue, conv1x1, 2, NULL, conv14_work_size, NULL, 1, &pool13_event, &conv14_event);
 	checkError(status, "Enqueueing conv1x1 14"); 
 
-/*	unsigned int N_elem_14 = input_channels_14*kernel_size_14*kernel_size_14;
-
-	size_t conv14_work_size[] = {8,1000};
-	size_t conv14_local_work_size[] = {8,8};
-
-	status |= clSetKernelArg(conv3x3, 0, sizeof(cl_mem), &d_pool13_out);
-	status |= clSetKernelArg(conv3x3, 1, sizeof(cl_mem), &d_conv14_weight);
-	status |= clSetKernelArg(conv3x3, 2, sizeof(cl_mem), &d_conv14_out);
-	status |= clSetKernelArg(conv3x3, 3, sizeof(int), &N_elem_14);
-	status |= clSetKernelArg(conv3x3, 4, sizeof(int), &kernel_size_14);
-	status |= clSetKernelArg(conv3x3, 5, sizeof(int), &stride_14);
-	status |= clSetKernelArg(conv3x3, 6, sizeof(int), &pad_14);
-	status |= clSetKernelArg(conv3x3, 7, sizeof(int), &input_channels_14);
-	status |= clSetKernelArg(conv3x3, 8, sizeof(int), &input_size_14);
-	status |= clSetKernelArg(conv3x3, 9, sizeof(int), &input_size_sq_14);
-	status |= clSetKernelArg(conv3x3, 10, sizeof(int), &output_size_14);
-	checkError(status, "Setting conv3x3 14 arguments");
-
-	status = clEnqueueNDRangeKernel(queue, conv3x3, 2, NULL, conv14_work_size, conv14_local_work_size, 1, &pool13_event, &conv14_event);
-	checkError(status, "Enqueueing conv3x3 14");*/
-
-
   // BATCHNORM 14
-
 	size_t bn14_work_size[] = {1000,1*1};
 	float eps1 = 0.0f;
 
@@ -1343,6 +1296,30 @@ int main() {
 
 	clWaitForEvents(1,&bn14_event);
 
+	status = clEnqueueReadBuffer(queue, d_bn14_out, CL_TRUE, 0, sizeof(float)*(1000), bn14_result, 0, NULL, NULL);
+
+	printf("bn14_result\n");
+	printf("%f\n", bn14_result[0]);
+	printf("%f\n", bn14_result[1]);
+	printf("%f\n", bn14_result[2]);
+	printf("%f\n", bn14_result[3]);
+	printf("%f\n", bn14_result[4]);
+	printf("%f\n", bn14_result[996]);
+	printf("%f\n", bn14_result[997]);
+	printf("%f\n", bn14_result[998]);
+	printf("%f\n", bn14_result[999]);
+
+	fp = fopen("out.txt", "w");
+	for(int i=0; i<1000; i++)
+	{
+		fprintf(fp, "%f\n", bn14_result[i]);
+
+	}
+	fclose(fp);
+
+	get_results(); // Finds the label and accuracy of the image
+
+
 	printf("Conv 0  time: %0.3f ms\n", getStartEndTime(conv0_event)*1e-6);
 	printf("Conv 2  time: %0.3f ms\n", getStartEndTime(conv2_event)*1e-6);
 	printf("Conv 4  time: %0.3f ms\n", getStartEndTime(conv4_event)*1e-6);
@@ -1356,7 +1333,7 @@ int main() {
 		getStartEndTime(conv6_event)+getStartEndTime(conv8_event)+getStartEndTime(conv10_event)+
 		getStartEndTime(conv12_event)+getStartEndTime(conv14_event);
 
-	printf("Total Convolution time: %0.3f ms\n", double(conv_time)*1e-6);
+	printf("Total Convolution time: %0.3f ms\n\n", double(conv_time)*1e-6);
 
 	printf("Batchnorm 0   time: %0.3f ms\n", getStartEndTime(bn0_event)*1e-6);
 	printf("Batchnorm 2   time: %0.3f ms\n", getStartEndTime(bn2_event)*1e-6);
@@ -1371,7 +1348,7 @@ int main() {
 		getStartEndTime(bn6_event)+getStartEndTime(bn8_event)+getStartEndTime(bn10_event)+
 		getStartEndTime(bn12_event)+getStartEndTime(bn14_event);
 
-	printf("Total Batchnorm time: %0.3f ms\n", double(bn_time)*1e-6);
+	printf("Total Batchnorm time: %0.3f ms\n\n", double(bn_time)*1e-6);
 
 	printf("Maxpool 1  time: %0.3f ms\n", getStartEndTime(pool1_event)*1e-6);
 	printf("Maxpool 3  time: %0.3f ms\n", getStartEndTime(pool3_event)*1e-6);
@@ -1389,98 +1366,13 @@ int main() {
 
 	cl_ulong total_time = conv_time + bn_time + pool_time;
 
-	printf("Total Time: %0.3f\n", double(total_time)*1e-6);
+	printf("Total Time: %0.3f\n\n", double(total_time)*1e-6);
+
+	printf("Label   : %s\n", label);
+	printf("Accuracy: %0.3f \n", accuracy);
 
 
 
-
-	status = clEnqueueReadBuffer(queue, d_conv0_out, CL_TRUE, 0, sizeof(float)*output_size_0*output_size_0*output_channels_0, conv0_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_bn0_out, CL_TRUE, 0, sizeof(float)*output_size_0*output_size_0*output_channels_0, bn0_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_pool1_out, CL_TRUE, 0, sizeof(float)*output_size_0*output_size_0*output_channels_0, pool1_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_conv2_out, CL_TRUE, 0, sizeof(float)*output_size_2*output_size_2*output_channels_2, conv2_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_pool3_out, CL_TRUE, 0, sizeof(float)*output_size_2*output_size_2*output_channels_2, pool3_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_conv12_out, CL_TRUE, 0, sizeof(float)*output_size_12*output_size_12*output_channels_12, conv12_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_bn14_out, CL_TRUE, 0, sizeof(float)*(1000), bn14_result, 0, NULL, NULL);
-
-
-	fp = fopen("output.txt", "w");
-	for(int i=0; i<(1000); i++)
-	{
-		fprintf(fp, "%f", bn14_result[i]);
-
-	}
-	fclose(fp);
-
-	printf("conv0_result\n");
-	printf("%f\n", conv0_result[0]);
-	printf("%f\n", conv0_result[1]);
-	printf("%f\n", conv0_result[2]);
-	printf("%f\n", conv0_result[3]);
-	printf("%f\n", conv0_result[4]);
-	printf("%f\n", conv0_result[1048574]);
-	printf("%f\n", conv0_result[1048575]);
-
-
-	printf("bn0_result\n");
-	printf("%f\n", bn0_result[0]);
-	printf("%f\n", bn0_result[1]);
-	printf("%f\n", bn0_result[2]);
-	printf("%f\n", bn0_result[3]);
-	printf("%f\n", bn0_result[4]);
-
-	printf("pool1_result\n");
-	printf("%f\n", pool1_result[0]);
-	printf("%f\n", pool1_result[1]);
-	printf("%f\n", pool1_result[2]);
-	printf("%f\n", pool1_result[3]);
-	printf("%f\n", pool1_result[4]);
-	printf("%f\n", pool1_result[5]);
-	printf("%f\n", pool1_result[6]);
-	printf("%f\n", pool1_result[7]);
-	printf("%f\n", pool1_result[8]);
-	printf("%f\n", pool1_result[9]);
-	printf("%f\n", pool1_result[100]);
-	printf("%f\n", pool1_result[1000]);
-	printf("%f\n", pool1_result[2000]);
-	printf("%f\n", pool1_result[3000]);
-	printf("%f\n", pool1_result[40000]);
-
-	printf("conv2_result\n");
-	printf("%f\n", conv2_result[0]);
-	printf("%f\n", conv2_result[1]);
-	printf("%f\n", conv2_result[2]);
-	printf("%f\n", conv2_result[3]);
-	printf("%f\n", conv2_result[4]);
-
-	printf("pool3_result\n");
-	printf("%f\n", pool3_result[0]);
-	printf("%f\n", pool3_result[1]);
-	printf("%f\n", pool3_result[2]);
-	printf("%f\n", pool3_result[3]);
-	printf("%f\n", pool3_result[4]);
-
-	printf("conv12_result\n");
-	printf("%f\n", conv12_result[0]);
-	printf("%f\n", conv12_result[1]);
-	printf("%f\n", conv12_result[2]);
-	printf("%f\n", conv12_result[3]);
-	printf("%f\n", conv12_result[4]);
-
-	printf("bn14_result\n");
-	printf("%f\n", bn14_result[0]);
-	printf("%f\n", bn14_result[1]);
-	printf("%f\n", bn14_result[2]);
-	printf("%f\n", bn14_result[3]);
-	printf("%f\n", bn14_result[4]);
-	printf("%f\n", bn14_result[996]);
-	printf("%f\n", bn14_result[997]);
-	printf("%f\n", bn14_result[998]);
-	printf("%f\n", bn14_result[999]);
-
-/*	printf("%f\n", &result[1]);
-	printf("%f\n", &result[2]);
-	printf("%f\n", &result[3]);
-	printf("%f\n", &result[4]);*/
 
 	clReleaseEvent(conv0_event);
 	clReleaseEvent(bn0_event);
@@ -1507,6 +1399,83 @@ int main() {
 	clReleaseEvent(bn14_event);
 
 	cleanup();
+}
+
+// void load_image()
+// {
+// 	printf("Image preprocessing...\n");
+// 	Mat img = imread(image_path);
+// 	Mat img1;
+
+// 	resize(img, img1, Size(256,256));
+// 	img1.convertTo(img1, CV_32FC3, 1.0/255, 0);
+
+// 	float* image_data = (float*)img1.data;
+
+// 	unsigned int w,h,c;
+// 	unsigned int k=0;
+// 	for(h=0; h<input_size_0; h++){
+// 		for(w=0; w<input_size_0; w++){
+// 			for(c=0; c<input_channels_0; c++){
+//         		image[c*input_size_0*input_size_0+h*input_size_0+w]=image_data[k];
+//         		k++;
+// 			}
+// 		}
+// 	}
+
+// 	status = clEnqueueWriteBuffer(queue, d_sample, CL_TRUE, 0,
+// 	 			input_size_0*input_size_0*input_channels_0*sizeof(float), sample, 0, NULL, NULL);
+// }
+
+void softmax()
+{
+    unsigned int i;
+	float data_max=0.0;
+	float data_exp;
+	float sum_exp=0.0;
+	for(i=0; i<1000; i++)
+	{
+	  if(data_max<bn14_result[i])
+	  data_max = bn14_result[i];
+	}
+
+    for(i=0; i<1000; i++)
+	{
+	   data_exp = exp(bn14_result[i]-data_max);
+	   sum_exp += data_exp;
+	}
+
+    for(i=0; i<1000; i++)
+	{
+	   data_exp = exp(bn14_result[i]-data_max);
+	   softmax_out[i] = (data_exp / sum_exp)*100.0;
+	}
+}
+
+void get_results()
+{
+    unsigned int i, index=0;
+	float data_max = 0.0;
+
+	softmax();
+
+	for(i=0; i<1000; i++)
+	{
+	  if(data_max<bn14_result[i]) {
+	  	data_max = bn14_result[i];
+	  	index = i;
+	  }
+	}
+	accuracy = data_max;
+
+	FILE* fp1;
+    fp1 = fopen("labels.txt", "r");
+
+    for(i = 0; i < index + 1; i++) {
+    fgets(label, sizeof(label), fp1);
+    }
+
+    fclose(fp1);
 }
 
 void cleanup()
@@ -1595,11 +1564,9 @@ void cleanup()
 	clReleaseProgram(program);
 	clReleaseContext(context);
 
-	free(conv0_result);
-	free(pool1_result);
-	free(conv2_result);
-	free(pool3_result);
-	free(conv12_result);
 	free(bn14_result);
+	free(softmax_out);
+	free(image);
 
 }
+
