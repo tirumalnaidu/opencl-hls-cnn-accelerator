@@ -113,7 +113,7 @@ __kernel void maxpool(__global float *restrict in_data,
 		for(int col=0;col<out_size;col++)
 		{
             float tmp1 = 0.0;
-            float tmp2 = -100.0;
+            float tmp2 = -10000.0;
                 
 			for(int i=0; i<(kernel_size*kernel_size); i++)
 			{
@@ -162,8 +162,7 @@ __kernel void conv1x1(
                 int w = j * stride - pad;
                     
 				if((h >= 0) && (h < input_size) && (w >= 0) && (w < input_size)) {
-                    tmp += input_im[k * input_size * input_size + h * input_size + w] \
-                            * filter_weight[k];
+                    tmp += input_im[k * input_size * input_size + h * input_size + w] * filter_weight[k];
 				}
 			}
 			output_im[i * output_size + j] = tmp;                              
@@ -172,4 +171,4 @@ __kernel void conv1x1(
 }
             
 
-    
+ 
