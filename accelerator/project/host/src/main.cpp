@@ -5,14 +5,15 @@
 #include "CL/opencl.h"
 #include "AOCLUtils/aocl_utils.h"
 #include "darknet.h"
-#include "img.h"
 
-// #include <opencv2/highgui/highgui.hpp>
-// #include <opencv2/imgproc/imgproc.hpp>
-// #include <opencv2/core/core.hpp>
-// using namespace cv;
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/core.hpp>
+using namespace cv;
 
 using namespace aocl_utils;
+
+cl_int status;
 
 cl_platform_id platform = NULL;
 unsigned num_devices = 0;
@@ -157,32 +158,21 @@ char bn14_bias_file[] = "bn14_bias.txt";
 
 const float eps = 0.00001;
 
-//float* image = (float *)malloc(input_size_0*input_size_0*input_channels_0*sizeof(float));
-//float* image_data = (float *)malloc(input_size_0*input_size_0*input_channels_0* sizeof(float));
-float *conv0_result = (float *)malloc(output_size_0*output_size_0*output_channels_0* sizeof(float));
-float *bn0_result = (float *)malloc(output_size_0*output_size_0*output_channels_0* sizeof(float));
+float* image = (float *)malloc(input_size_0*input_size_0*input_channels_0*sizeof(float));
+float* image_data = (float *)malloc(input_size_0*input_size_0*input_channels_0* sizeof(float));
 
-float *pool1_result = (float *)malloc(output_size_1*output_size_1*output_channels_0* sizeof(float));
-float *conv2_result = (float *)malloc(output_size_2*output_size_2*output_channels_2* sizeof(float));
-float *pool3_result = (float *)malloc(output_size_3*output_size_3*output_channels_0* sizeof(float));
-float *conv12_result = (float *)malloc(output_size_12*output_size_12*output_channels_12* sizeof(float));
-float *bn12_result = (float *)malloc(output_size_12*output_size_12*output_channels_12* sizeof(float));
-float *pool13_result = (float *)malloc(output_size_13*output_size_13*output_channels_12* sizeof(float));
-float *conv14_result = (float *)malloc(output_size_14*output_size_14*output_channels_14* sizeof(float));
-float *bn14_result = (float *)malloc(1000* sizeof(float));
+float *bn14_result = (float *)malloc(output_channels_14* sizeof(float));
 float* softmax_out = (float *)malloc(output_channels_14* sizeof(float));
 
 char label[200];
 float accuracy;
 
-// void load_image();
+void load_image();
 void softmax();
 void get_results();
 void cleanup();
 
 int main() {
-
-	cl_int status;
 
 	printf("Initializing OpenCL\n");
 
@@ -788,10 +778,7 @@ int main() {
 	fclose(fp);
 
 // Transfer data to the buffers
-
-	status = clEnqueueWriteBuffer(queue, d_sample, CL_TRUE, 0,
-	 			input_size_0*input_size_0*input_channels_0*sizeof(float), sample, 0, NULL, NULL);	
-    checkError(status, "Failed to transfer input data");
+	
 
 	status = clEnqueueWriteBuffer(queue, d_conv0_weight, CL_TRUE, 0,
 				32*output_channels_0*sizeof(float), conv0_weight, 0, NULL, NULL);
@@ -890,12 +877,9 @@ int main() {
 	status = clEnqueueWriteBuffer(queue, d_bn14_var, CL_TRUE, 0,
 				output_channels_14*sizeof(float), bn14_var, 0, NULL, NULL);
 
+	load_image();
 
-
-// Kernel Execution
 	printf("\n\nAccelerator starts...\n\n");
-
-	//load_image();
 
 	// CONV 0
 	unsigned int N_elem_0 = 32;
@@ -1306,135 +1290,7 @@ int main() {
 
 	clWaitForEvents(1,&bn14_event);
 
-	status = clEnqueueReadBuffer(queue, d_conv0_out, CL_TRUE, 0, sizeof(float)*output_size_0*output_size_0*output_channels_0, conv0_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_bn0_out, CL_TRUE, 0, sizeof(float)*output_size_0*output_size_0*output_channels_0, bn0_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_pool1_out, CL_TRUE, 0, sizeof(float)*output_size_1*output_size_1*output_channels_0, pool1_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_conv2_out, CL_TRUE, 0, sizeof(float)*output_size_2*output_size_2*output_channels_2, conv2_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_pool3_out, CL_TRUE, 0, sizeof(float)*output_size_3*output_size_3*output_channels_2, pool3_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_conv12_out, CL_TRUE, 0, sizeof(float)*output_size_12*output_size_12*output_channels_12, conv12_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_bn12_out, CL_TRUE, 0, sizeof(float)*output_size_12*output_size_12*output_channels_12, bn12_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_pool13_out, CL_TRUE, 0, sizeof(float)*output_size_13*output_size_13*output_channels_12, pool13_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_conv14_out, CL_TRUE, 0, sizeof(float)*output_size_14*output_size_14*output_channels_14, conv14_result, 0, NULL, NULL);
-	status = clEnqueueReadBuffer(queue, d_bn14_out, CL_TRUE, 0, sizeof(float)*(1000), bn14_result, 0, NULL, NULL);
-
-
-	fp = fopen("output.txt", "w");
-	for(int i=0; i<(1024); i++)
-	{
-		fprintf(fp, "%f\n", pool13_result[i]);
-
-	}
-	fclose(fp);
-
-	printf("conv0_result\n");
-	printf("%f\n", conv0_result[0]);
-	printf("%f\n", conv0_result[1]);
-	printf("%f\n", conv0_result[2]);
-	printf("%f\n", conv0_result[3]);
-	printf("%f\n", conv0_result[4]);
-	printf("%f\n", conv0_result[1048574]);
-	printf("%f\n", conv0_result[1048575]);
-
-
-	printf("bn0_result\n");
-	printf("%f\n", bn0_result[0]);
-	printf("%f\n", bn0_result[1]);
-	printf("%f\n", bn0_result[2]);
-	printf("%f\n", bn0_result[3]);
-	printf("%f\n", bn0_result[4]);
-
-	printf("pool1_result\n");
-	printf("%f\n", pool1_result[0]);
-	printf("%f\n", pool1_result[1]);
-	printf("%f\n", pool1_result[2]);
-	printf("%f\n", pool1_result[3]);
-	printf("%f\n", pool1_result[4]);
-	printf("%f\n", pool1_result[5]);
-	printf("%f\n", pool1_result[6]);
-	printf("%f\n", pool1_result[7]);
-	printf("%f\n", pool1_result[8]);
-	printf("%f\n", pool1_result[9]);
-	printf("%f\n", pool1_result[100]);
-	printf("%f\n", pool1_result[1000]);
-	printf("%f\n", pool1_result[2000]);
-	printf("%f\n", pool1_result[3000]);
-	printf("%f\n", pool1_result[262143]);
-
-	printf("conv2_result\n");
-	printf("%f\n", conv2_result[0]);
-	printf("%f\n", conv2_result[1]);
-	printf("%f\n", conv2_result[2]);
-	printf("%f\n", conv2_result[3]);
-	printf("%f\n", conv2_result[4]);
-
-	printf("pool3_result\n");
-	printf("%f\n", pool3_result[0]);
-	printf("%f\n", pool3_result[1]);
-	printf("%f\n", pool3_result[2]);
-	printf("%f\n", pool3_result[3]);
-	printf("%f\n", pool3_result[4]);
-
-	printf("conv12_result\n");
-	printf("%f\n", conv12_result[0]);
-	printf("%f\n", conv12_result[1]);
-	printf("%f\n", conv12_result[2]);
-	printf("%f\n", conv12_result[3]);
-	printf("%f\n", conv12_result[4]);
-
-	printf("bn12_result\n");
-	printf("%f\n", bn12_result[0]);
-	printf("%f\n", bn12_result[1]);
-	printf("%f\n", bn12_result[2]);
-	printf("%f\n", bn12_result[3]);
-	printf("%f\n", bn12_result[4]);
-
-	printf("pool13_result\n");
-	printf("%f\n", pool13_result[0]);
-	printf("%f\n", pool13_result[1]);
-	printf("%f\n", pool13_result[2]);
-	printf("%f\n", pool13_result[3]);
-	printf("%f\n", pool13_result[4]);
-
-	printf("conv14_result\n");
-	printf("%f\n", conv14_result[0]);
-	printf("%f\n", conv14_result[1]);
-	printf("%f\n", conv14_result[2]);
-	printf("%f\n", conv14_result[3]);
-	printf("%f\n", conv14_result[4]);
-
-	printf("bn14_result\n");
-	printf("%f\n", bn14_result[0]);
-	printf("%f\n", bn14_result[1]);
-	printf("%f\n", bn14_result[2]);
-	printf("%f\n", bn14_result[3]);
-	printf("%f\n", bn14_result[4]);
-	printf("%f\n", bn14_result[996]);
-	printf("%f\n", bn14_result[997]);
-	printf("%f\n", bn14_result[998]);
-	printf("%f\n", bn14_result[999]);
-
-	//get_results(); // Finds the label and accuracy of the image
-
-	int index;
-	float data_max=-100.0;
-	for(int i=0; i<1000; i++)
-	{
-	  if(data_max<bn14_result[i]) {
-	  	data_max = bn14_result[i];
-	  	index = i;
-	  }
-	}
-	accuracy = data_max;
-
-	FILE* fp1;
-    fp1 = fopen("labels.txt", "r");
-
-    for(int i = 0; i < index + 1; i++) {
-    fgets(label, sizeof(label), fp1);
-    }
-
-    fclose(fp1);
-
+	get_results(); // Finds the label and accuracy of the image
 
 	printf("Conv 0  time: %0.3f ms\n", getStartEndTime(conv0_event)*1e-6);
 	printf("Conv 2  time: %0.3f ms\n", getStartEndTime(conv2_event)*1e-6);
@@ -1514,31 +1370,33 @@ int main() {
 	cleanup();
 }
 
-// void load_image()
-// {
-// 	printf("Image preprocessing...\n");
-// 	Mat img = imread(image_path);
-// 	Mat img1;
+void load_image()
+{
+	printf("\nImage preprocessing...");
+	Mat img = imread(image_path);
+	Mat img1;
 
-// 	resize(img, img1, Size(256,256));
-// 	img1.convertTo(img1, CV_32FC3, 1.0/255, 0);
+	resize(img, img1, Size(256,256));
+	img1.convertTo(img1, CV_32FC3, 1.0/255, 0);
 
-// 	float* image_data = (float*)img1.data;
+	float* image_data = (float*)img1.data;
 
-// 	unsigned int w,h,c;
-// 	unsigned int k=0;
-// 	for(h=0; h<input_size_0; h++){
-// 		for(w=0; w<input_size_0; w++){
-// 			for(c=0; c<input_channels_0; c++){
-//         		image[c*input_size_0*input_size_0+h*input_size_0+w]=image_data[k];
-//         		k++;
-// 			}
-// 		}
-// 	}
+	unsigned int w,h,c;
+	unsigned int k=0;
+	for(h=0; h<input_size_0; h++){
+		for(w=0; w<input_size_0; w++){
+			for(c=0; c<input_channels_0; c++){
+        		image[c*input_size_0*input_size_0+h*input_size_0+w]=image_data[k];
+        		k++;
+			}
+		}
+	}
 
-// 	status = clEnqueueWriteBuffer(queue, d_sample, CL_TRUE, 0,
-// 	 			input_size_0*input_size_0*input_channels_0*sizeof(float), sample, 0, NULL, NULL);
-// }
+	status = clEnqueueWriteBuffer(queue, d_sample, CL_TRUE, 0,
+	 			input_size_0*input_size_0*input_channels_0*sizeof(float), image, 0, NULL, NULL);
+    checkError(status, "Failed to transfer input data");
+
+}
 
 void softmax()
 {
@@ -1569,6 +1427,9 @@ void get_results()
 {
     unsigned int i, index=0;
 	float data_max = 0.0;
+
+	status = clEnqueueReadBuffer(queue, d_bn14_out, CL_TRUE, 0, sizeof(float)*(1000), bn14_result, 0, NULL, NULL);
+    checkError(status, "Failed to read d)bn14_out");
 
 	softmax();
 
@@ -1680,13 +1541,5 @@ void cleanup()
 	free(bn14_result);
 	free(softmax_out);
 
-	free(conv0_result);
-	free(pool1_result);
-	free(conv2_result);
-	free(pool3_result);
-	free(conv12_result);
-	free(bn12_result);
-	free(pool13_result);
-	free(conv14_result);
 }
 

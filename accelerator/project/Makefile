@@ -25,23 +25,20 @@ CXXFLAGS += -O2
 endif
 
 # Compiler. ARM cross-compiler.
-CXX := arm-linux-gnueabihf-g++
+CXX := arm-linux-gnueabihf-g++-9
 
 # Target
 TARGET := host
 TARGET_DIR := bin
 
 # Directories
-INC_DIRS := host/inc common/inc ../common/inc 
-#/usr/local/opencv-arm/include/opencv4
-LIB_DIRS := 
-#/usr/local/opencv-arm/lib
+INC_DIRS := host/inc common/inc ../common/inc /usr/local/opencv-arm/include/opencv4
+LIB_DIRS := /usr/local/opencv-arm/lib
 
 # Files
 INCS := $(wildcard host/inc/*.h)
 SRCS := $(wildcard host/src/*.cpp ../common/src/AOCLUtils/*.cpp)
-LIBS :=  rt pthread 
-# opencv_highgui opencv_core opencv_imgproc opencv_imgcodecs
+LIBS :=  rt pthread opencv_highgui opencv_core opencv_imgproc opencv_imgcodecs
 
 # Make it all!
 all : $(TARGET_DIR)/$(TARGET)
