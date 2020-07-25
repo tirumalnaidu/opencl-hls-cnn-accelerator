@@ -6,9 +6,9 @@
 #include "AOCLUtils/aocl_utils.h"
 #include "darknet.h"
 
+#include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/core/core.hpp>
 using namespace cv;
 
 using namespace aocl_utils;
@@ -58,6 +58,11 @@ cl_event conv10_event, bn10_event, pool11_event;
 cl_event conv12_event, bn12_event, pool13_event;
 cl_event conv14_event, bn14_event;
 
+
+float* image = (float *)malloc(input_size_0*input_size_0*input_channels_0*sizeof(float));
+float* result = (float *)malloc(output_channels_14* sizeof(float));
+float* softmax_out = (float *)malloc(output_channels_14* sizeof(float));
+
 float* conv0_weight = (float* )malloc(32*output_channels_0*sizeof(float));
 float* bn0_weight = (float* )malloc(output_channels_0*sizeof(float));
 float* bn0_mean = (float* )malloc(output_channels_0*sizeof(float));
@@ -106,7 +111,8 @@ float* bn14_mean = (float* )malloc(output_channels_14*sizeof(float));
 float* bn14_var = (float* )malloc(output_channels_14*sizeof(float));
 float* bn14_bias = (float* )malloc(output_channels_14*sizeof(float));
 
-char image_path[] = "cat.jpg";
+
+char image_path[] = "img.jpg";
 
 char conv0_wt_file[] = "conv0_weight.txt";
 char bn0_wt_file[]   = "bn0_weight.txt";
@@ -158,16 +164,10 @@ char bn14_bias_file[] = "bn14_bias.txt";
 
 const float eps = 0.00001;
 
-float* image = (float *)malloc(input_size_0*input_size_0*input_channels_0*sizeof(float));
-float* image_data = (float *)malloc(input_size_0*input_size_0*input_channels_0* sizeof(float));
-
-float *bn14_result = (float *)malloc(output_channels_14* sizeof(float));
-float* softmax_out = (float *)malloc(output_channels_14* sizeof(float));
-
-char label[200];
+char label[100];
 float accuracy;
 
-void load_image();
+void load_image(); 
 void softmax();
 void get_results();
 void cleanup();
@@ -779,7 +779,6 @@ int main() {
 
 // Transfer data to the buffers
 	
-
 	status = clEnqueueWriteBuffer(queue, d_conv0_weight, CL_TRUE, 0,
 				32*output_channels_0*sizeof(float), conv0_weight, 0, NULL, NULL);
     checkError(status, "Failed to transfer conv0 weights");
@@ -1374,12 +1373,15 @@ void load_image()
 {
 	printf("\nImage preprocessing...");
 	Mat img = imread(image_path);
-	Mat img1;
+	Mat img_resized;
 
-	resize(img, img1, Size(256,256));
-	img1.convertTo(img1, CV_32FC3, 1.0/255, 0);
+	imshow("Darknet Accelerator", img);
+	waitKey(0);
 
-	float* image_data = (float*)img1.data;
+	resize(img, img_resized, Size(256,256), INTER_LINEAR);
+	img_resized.convertTo(img_resized, CV_32F, 1.0/255, 0);
+
+	float* image_data = (float*)img_resized.data;
 
 	unsigned int w,h,c;
 	unsigned int k=0;
@@ -1398,6 +1400,35 @@ void load_image()
 
 }
 
+void get_results()
+{
+    unsigned int i, index=0;
+	float data_max = 0.0;
+
+	status = clEnqueueReadBuffer(queue, d_bn14_out, CL_TRUE, 0, sizeof(float)*output_channels_14, result, 0, NULL, NULL);
+    checkError(status, "Failed to read result");
+
+	softmax();
+
+	for(i=0; i<1000; i++)
+	{
+	  if(data_max<result[i]) {
+	  	data_max = result[i];
+	  	index = i;
+	  }
+	}
+	accuracy = data_max;
+
+	FILE* fp;
+    fp = fopen("labels.txt", "r");
+
+    for(i = 0; i < index + 1; i++) {
+    fgets(label, sizeof(label), fp);
+    }
+
+    fclose(fp);
+}
+
 void softmax()
 {
     unsigned int i;
@@ -1406,50 +1437,21 @@ void softmax()
 	float sum_exp=0.0;
 	for(i=0; i<1000; i++)
 	{
-	  if(data_max<bn14_result[i])
-	  data_max = bn14_result[i];
+	  if(data_max<result[i])
+	  data_max = result[i];
 	}
 
     for(i=0; i<1000; i++)
 	{
-	   data_exp = exp(bn14_result[i]-data_max);
+	   data_exp = exp(result[i]-data_max);
 	   sum_exp += data_exp;
 	}
 
     for(i=0; i<1000; i++)
 	{
-	   data_exp = exp(bn14_result[i]-data_max);
+	   data_exp = exp(result[i]-data_max);
 	   softmax_out[i] = (data_exp / sum_exp)*100.0;
 	}
-}
-
-void get_results()
-{
-    unsigned int i, index=0;
-	float data_max = 0.0;
-
-	status = clEnqueueReadBuffer(queue, d_bn14_out, CL_TRUE, 0, sizeof(float)*(1000), bn14_result, 0, NULL, NULL);
-    checkError(status, "Failed to read d)bn14_out");
-
-	softmax();
-
-	for(i=0; i<1000; i++)
-	{
-	  if(data_max<bn14_result[i]) {
-	  	data_max = bn14_result[i];
-	  	index = i;
-	  }
-	}
-	accuracy = data_max;
-
-	FILE* fp1;
-    fp1 = fopen("labels.txt", "r");
-
-    for(i = 0; i < index + 1; i++) {
-    fgets(label, sizeof(label), fp1);
-    }
-
-    fclose(fp1);
 }
 
 void cleanup()
@@ -1538,7 +1540,8 @@ void cleanup()
 	clReleaseProgram(program);
 	clReleaseContext(context);
 
-	free(bn14_result);
+	free(image);
+	free(result);
 	free(softmax_out);
 
 }
