@@ -12,6 +12,7 @@ We designed a Neural Network Accelerator for [Darknet Reference Model](https://p
       * [Files](#files)
       * [CNN Architecture](#cnn-architecture)
       * [Results](#results)
+      * [Resource Usage](#resource-usage)
       * [Planned Improvements](#planned-improvements)
 
 ## Board
@@ -24,7 +25,8 @@ We designed a Neural Network Accelerator for [Darknet Reference Model](https://p
 - [Intel® SoC FPGA Embedded Development Suite 18.1 (SoC EDS)](https://fpgasoftware.intel.com/soceds/18.1/?edition=standard)
 - [PuTTY](https://www.putty.org/)
 - PyTorch
-- PyOpenCL 
+- PyOpenCL
+- [X2Go Server(Optional, if there is no HDMI monitor available)](https://wiki.x2go.org/doku.php/doc:installation:x2goserver)
 
 ## Files 
 - [pytorch_model ](pytorch_model/pytorch_model.ipynb)- We used a CNN based on Darknet Framework. So, we had to implemented the model in PyTorch Framework to check the results and collect the model parameters
@@ -58,6 +60,9 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 
 
 ## Results
+
+<img src="images/cat.jpg" >
+
 ```
 Conv 0  time: 35.898 ms                                                         
 Conv 2  time: 79.748 ms                                                         
@@ -88,12 +93,22 @@ Maxpool 11  time: 0.719 ms
 Maxpool 13  time: 0.286 ms                                                      
 Total Pooling time: 125.042 ms                                                  
                                                                                 
-Total Time: 902.642                                                             
+Total Time: 902.642 ms                                                            
                                                                                 
 Label   : Egyptian cat                                                          
 Accuracy: 35.796 % 
 
 ```
+
+##Resource Usage
+| Kernel     | ALUTs          | FFs             | RAMs          | DSPs          |   
+|:----------:|:--------------:|:---------------:|:-------------:|:-------------:|
+| conv       |27822           | 28705           | 144           | 58            | 
+| batch norm |9949            | 12211           | 93            | 10            |
+| pool       |8247            | 10211           | 36            | 24            | 
+| conv1x1    |12184           | 15087           | 102           | 17            | 
+| **Total**  |**61872 (56%)** | **73190 (33%)** | **405 (79%)** | **109 (97%)** | 
+
 
 ## Planned Improvements
 

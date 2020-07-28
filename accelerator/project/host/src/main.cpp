@@ -1342,6 +1342,8 @@ int main() {
 	printf("Label   : %s\n", label);
 	printf("Accuracy: %0.3f \n", accuracy);
 
+	destroyWindow("Darknet Accelerator");
+	
 	clReleaseEvent(conv0_event);
 	clReleaseEvent(bn0_event);
 	clReleaseEvent(pool1_event);
@@ -1376,7 +1378,6 @@ void load_image()
 	Mat img_resized;
 
 	imshow("Darknet Accelerator", img);
-	waitKey(0);
 
 	resize(img, img_resized, Size(256,256), INTER_LINEAR);
 	img_resized.convertTo(img_resized, CV_32F, 1.0/255, 0);
