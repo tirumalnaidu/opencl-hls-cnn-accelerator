@@ -14,6 +14,7 @@ We designed a Neural Network Accelerator for [Darknet Reference Model](https://p
       * [Results](#results)
       * [Resource Usage](#resource-usage)
       * [Planned Improvements](#planned-improvements)
+      * [License](#license)
 
 ## Board
 - [Terasic DE10-Nano Development Kit (Cyclone V SoC FPGA)](https://software.intel.com/content/www/us/en/develop/articles/terasic-de10-nano-get-started-guide.html)
@@ -114,3 +115,6 @@ Accuracy: 35.796 %
 
 We can further improve the throughput of the accelerator by converting the model to fixed point (8-bit or 16-bit) and pipelining the accelerator by using Intel channels and pipes
 extension.
+
+## License
+[MIT License](https://github.com/tirumalnaidu/opencl-cnn-accelerator/blob/master/LICENSE)
