@@ -24,6 +24,12 @@ def load_image(im_path):
 
 	return im_input
 
+'''
+We designed a Neural Network Accelerator for Darknet Reference Model(https://pjreddie.com/darknet/imagenet/#reference),
+which  is 2.9 times faster than AlexNet and attains the same top-1 and top-5 performance as AlexNet but with 1/10th the parameters
+for image classification on Imagenet Dataset.
+'''
+
 
 class DarkNet(nn.Module):
     def __init__(self):
