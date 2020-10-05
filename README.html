@@ -1056,8 +1056,8 @@ body .markdown-body
 .codehilite .il{color:#009999}
 .codehilite .gc{color:#999;background-color:#EAF2F5}
 </style><title>README</title></head><body><article class="markdown-body"><h1 id="about">About<a class="headerlink" href="#about" title="Permanent link"></a></h1>
-<p>We designed a Neural Network Accelerator for <a href="https://pjreddie.com/darknet/imagenet/#reference">Darknet Reference Model</a> (which  is 2.9 times faster than AlexNet and attains the same top-1 and top-5 performance as AlexNet but with 1/10th the parameters). </p>
-<p><img src="/home/tirumal/Neural-Network-Accelerator-on-FPGA-using-OpenCL-Framework/images/cnn_table.jpg" > </p>
+<p>We designed a Neural Network Accelerator for <a href="https://pjreddie.com/darknet/imagenet/#reference">Darknet Reference Model</a> (which  is 2.9 times faster than AlexNet and attains the same top-1 and top-5 performance as AlexNet but with 1/10th the parameters) for image classification on Imagenet Dataset.</p>
+<p><img src="/home/tirumal/opencl-cnn-accelerator/images/cnn_table.jpg" > </p>
 <h1 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link"></a></h1>
 <ul>
 <li><a href="#about">About</a></li>
@@ -1067,6 +1067,7 @@ body .markdown-body
 <li><a href="#files">Files</a></li>
 <li><a href="#cnn-architecture">CNN Architecture</a></li>
 <li><a href="#results">Results</a></li>
+<li><a href="#resource-usage">Resource Usage</a></li>
 <li><a href="#planned-improvements">Planned Improvements</a></li>
 </ul>
 </li>
@@ -1075,20 +1076,22 @@ body .markdown-body
 <ul>
 <li><a href="https://software.intel.com/content/www/us/en/develop/articles/terasic-de10-nano-get-started-guide.html">Terasic DE10-Nano Development Kit (Cyclone V SoC FPGA)</a></li>
 </ul>
+<p><img src="/home/tirumal/opencl-cnn-accelerator/images/de10nano_system.png" > </p>
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link"></a></h2>
 <ul>
 <li><a href="https://fpgasoftware.intel.com/opencl/18.1/?edition=standard">Intel® FPGA SDK for OpenCL™ 18.1</a></li>
 <li><a href="https://fpgasoftware.intel.com/soceds/18.1/?edition=standard">Intel® SoC FPGA Embedded Development Suite 18.1 (SoC EDS)</a></li>
 <li><a href="https://www.putty.org/">PuTTY</a></li>
 <li>PyTorch</li>
-<li>PyOpenCL </li>
+<li>PyOpenCL</li>
+<li><a href="https://wiki.x2go.org/doku.php/doc:installation:x2goserver">X2Go Server(Optional, if there is no HDMI monitor available)</a></li>
 </ul>
 <h2 id="files">Files<a class="headerlink" href="#files" title="Permanent link"></a></h2>
 <ul>
-<li><a href="/home/tirumal/Neural-Network-Accelerator-on-FPGA-using-OpenCL-Framework/pytorch_model/pytorch_model.ipynb">pytorch_model </a>- The Neural network we used is based on Darknet Framework. So, we had to implemented the model in PyTorch Framework to check the results.</li>
-<li><a href="/home/tirumal/Neural-Network-Accelerator-on-FPGA-using-OpenCL-Framework/pyopencl_model/pyopencl.ipynb">pyopencl_model </a> - 
+<li><a href="/home/tirumal/opencl-cnn-accelerator/pytorch_model/pytorch_model.ipynb">pytorch_model </a>- We used a CNN based on Darknet Framework. So, we had to implemented the model in PyTorch Framework to check the results and collect the model parameters</li>
+<li><a href="/home/tirumal/opencl-cnn-accelerator/pyopencl_model/pyopencl.ipynb">pyopencl_model </a> - 
 To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package and it worked with same accuracy as PyTorch model and acheived about 20x speed than PyTorch model.</li>
-<li><a href="/home/tirumal/Neural-Network-Accelerator-on-FPGA-using-OpenCL-Framework/model">model </a> - This folder contains the pre-trained model parameters of darknet reference model of each layer in seperate txt file.</li>
+<li><a href="/home/tirumal/opencl-cnn-accelerator/model">model </a> - This folder contains the pre-trained model parameters of darknet reference model of each layer in seperate txt file.</li>
 </ul>
 <h2 id="cnn-architecture">CNN Architecture<a class="headerlink" href="#cnn-architecture" title="Permanent link"></a></h2>
 <p><center></p>
@@ -1119,7 +1122,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 <tr>
 <td align="right">2</td>
 <td align="right">max</td>
-<td align="right"></td>
+<td align="right">-</td>
 <td align="right">2 x 2</td>
 <td align="right">2</td>
 <td align="right">0</td>
@@ -1139,7 +1142,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 <tr>
 <td align="right">4</td>
 <td align="right">max</td>
-<td align="right"></td>
+<td align="right">-</td>
 <td align="right">2 x 2</td>
 <td align="right">2</td>
 <td align="right">0</td>
@@ -1159,7 +1162,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 <tr>
 <td align="right">6</td>
 <td align="right">max</td>
-<td align="right"></td>
+<td align="right">-</td>
 <td align="right">2 x 2</td>
 <td align="right">2</td>
 <td align="right">0</td>
@@ -1179,7 +1182,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 <tr>
 <td align="right">8</td>
 <td align="right">max</td>
-<td align="right"></td>
+<td align="right">-</td>
 <td align="right">2 x 2</td>
 <td align="right">2</td>
 <td align="right">0</td>
@@ -1199,7 +1202,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 <tr>
 <td align="right">10</td>
 <td align="right">max</td>
-<td align="right"></td>
+<td align="right">-</td>
 <td align="right">2 x 2</td>
 <td align="right">2</td>
 <td align="right">0</td>
@@ -1219,7 +1222,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 <tr>
 <td align="right">12</td>
 <td align="right">max</td>
-<td align="right"></td>
+<td align="right">-</td>
 <td align="right">2 x 2</td>
 <td align="right">2</td>
 <td align="right">0</td>
@@ -1239,7 +1242,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 <tr>
 <td align="right">14</td>
 <td align="right">avg</td>
-<td align="right"></td>
+<td align="right">-</td>
 <td align="right">4 x 4</td>
 <td align="right">1</td>
 <td align="right">0</td>
@@ -1260,6 +1263,7 @@ To simulate and verify the kernels we wrote in OpenCL, we used PyOpenCL package 
 </table>
 <p></center></p>
 <h2 id="results">Results<a class="headerlink" href="#results" title="Permanent link"></a></h2>
+<p><img src="/home/tirumal/opencl-cnn-accelerator/images/cat.jpg" ></p>
 <div class="codehilite"><pre>Conv 0  time: 35.898 ms                                                         
 Conv 2  time: 79.748 ms                                                         
 Conv 4  time: 79.439 ms                                                         
@@ -1289,12 +1293,61 @@ Maxpool 11  time: 0.719 ms
 Maxpool 13  time: 0.286 ms                                                      
 Total Pooling time: 125.042 ms                                                  
 
-Total Time: 902.642                                                             
+Total Time: 902.642 ms                                                            
 
 Label   : Egyptian cat                                                          
 Accuracy: 35.796 % 
 </pre></div>
 
+<h2 id="resource-usage">Resource Usage<a class="headerlink" href="#resource-usage" title="Permanent link"></a></h2>
+<table>
+<thead>
+<tr>
+<th align="center">Kernel</th>
+<th align="center">ALUTs</th>
+<th align="center">FFs</th>
+<th align="center">RAMs</th>
+<th align="center">DSPs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">conv</td>
+<td align="center">27822</td>
+<td align="center">28705</td>
+<td align="center">144</td>
+<td align="center">58</td>
+</tr>
+<tr>
+<td align="center">batch norm</td>
+<td align="center">9949</td>
+<td align="center">12211</td>
+<td align="center">93</td>
+<td align="center">10</td>
+</tr>
+<tr>
+<td align="center">pool</td>
+<td align="center">8247</td>
+<td align="center">10211</td>
+<td align="center">36</td>
+<td align="center">24</td>
+</tr>
+<tr>
+<td align="center">conv1x1</td>
+<td align="center">12184</td>
+<td align="center">15087</td>
+<td align="center">102</td>
+<td align="center">17</td>
+</tr>
+<tr>
+<td align="center"><strong>Total</strong></td>
+<td align="center"><strong>61872 (56%)</strong></td>
+<td align="center"><strong>73190 (33%)</strong></td>
+<td align="center"><strong>405 (79%)</strong></td>
+<td align="center"><strong>109 (97%)</strong></td>
+</tr>
+</tbody>
+</table>
 <h2 id="planned-improvements">Planned Improvements<a class="headerlink" href="#planned-improvements" title="Permanent link"></a></h2>
 <p>We can further improve the throughput of the accelerator by converting the model to fixed point (8-bit or 16-bit) and pipelining the accelerator by using Intel channels and pipes
 extension.</p></article></body></html>
