@@ -1,5 +1,5 @@
 numpy==1.19.0
-Pillow==8.1.1
+Pillow==8.2.0
 pyopencl==2020.2
 torch==1.5.1
 torchvision==0.6.1
