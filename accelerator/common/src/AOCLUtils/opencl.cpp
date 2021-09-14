@@ -215,6 +215,8 @@ void printError(cl_int error) {
       break;
     case -63:
       printf("CL_INVALID_GLOBAL_WORK_SIZE ");
+    case -64:
+      printf("CL_INVALID_LOCAL_GROUP_SIZE");  
       break;
     default:
       printf("UNRECOGNIZED ERROR CODE (%d)", error);
